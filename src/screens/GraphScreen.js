@@ -1,43 +1,94 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import axios from 'axios';
 import {
-    VictoryBar, VictoryChart, VictoryAxis,
-    VictoryTheme, VictoryStack
+    VictoryBar,
+    VictoryChart,
+    VictoryAxis,
+    VictoryTheme
 } from 'victory';
 
-function GraphScreen() {
 
-    const data = [
-        { quarter: 1, earnings: 13000 },
-        { quarter: 2, earnings: 16500 },
-        { quarter: 3, earnings: 14250 },
-        { quarter: 4, earnings: 19000 }
-    ];
+function GraphScreen({ socket }) {
+    const [data, setData] = useState([])
+    const [response, setResponse] = useState()
 
-    return <div style={{ width: "50%", height: "500px", marginLeft: "25rem" }}>
+    socket.on('got follow', (response) => {
+        setResponse(response)
+        try {
+            axios.get('/api/vacations').then(({ data }) => {
+                setData(data.filter(vacation => {
+                    if (vacation.followers.length > 0) {
+                        return vacation
+                    }
+                }).map(vacation => { return { followers: vacation.followers.length, name: vacation.name } }))
+            })
+                .catch(err => {
+                    console.log(err)
+                })
+        } catch (error) {
+            console.log(`Error: ${error.message}`)
+        }
+    })
+
+    useEffect(() => {
+        return function cleanUp() {
+            setData([])
+        }
+    }, [])
+
+    useEffect(() => {
+        try {
+            axios.get('/api/vacations').then(({ data }) => {
+                setData(data.filter(vacation => {
+                    if (vacation.followers.length > 0) {
+                        return vacation
+                    }
+                }).map(vacation => { return { followers: vacation.followers.length, name: vacation.name } }))
+            })
+                .catch(err => {
+                    console.log(err)
+                })
+        } catch (error) {
+            console.log(`Error: ${error.message}`)
+        }
+    }, [])
+
+
+    // console.log(data)
+    let num = 0
+    const tick_values = data.map(obj => {
+        return (++num)
+    })
+    const tick_format = data.map(obj => obj.name)
+    // console.log(tick_values)
+    // console.log(tick_format)
+
+    return <div className='mx-auto' style={{ width: "100%", height: "80%" }}>
         <VictoryChart
             // adding the material theme provided with Victory
             theme={VictoryTheme.material}
-            domainPadding={30}
+            domainPadding={23}
+            width={800}
+            height={550}
         >
             <VictoryAxis
-                tickValues={[1, 2, 3, 4]}
-                tickFormat={["Quarter 1", "Quarter 2", "Quarter 3", "Quarter 4"]}
+                tickValues={tick_values}
+                tickFormat={tick_format}
             />
             <VictoryAxis
                 dependentAxis
-                tickFormat={(x) => (`$${x / 1000}k`)}
+                tickFormat={(x) => (`${Math.round(x)} F`)}
             />
-            <VictoryStack
-                colorScale={["#ffddee"]}
-            >
-                <VictoryBar
-                    data={data}
-                    x="quarter"
-                    y="earnings"
-                />
-            </VictoryStack>
+            <VictoryBar
+                data={data}
+                x="name"
+                y="followers"
+                style={{
+                    data: { fill: "pink", width: 25 }
+                }}
+            />
         </VictoryChart>
-    </div>;
+    </div >;
 }
 
 export default GraphScreen;
